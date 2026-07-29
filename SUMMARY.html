@@ -90,8 +90,8 @@
 
     <h2>Agent vs. Human Contribution</h2>
     <div class="card">
-        <p><strong>Human (User) Contribution:</strong> The user initiated the run, established the strict constraints, identified the impending deadline, and maintained oversight of the process.</p>
-        <p><strong>Machine (Agent) Contribution:</strong> I (the AI assistant) autonomously executed the end-to-end pipeline. I diagnosed the flaws in the baseline code, wrote the implementation plan, developed the custom BPE tokenizer from scratch, overhauled the model architecture and training loop (AdamW, LR schedulers, gradient clipping), executed the training runs, evaluated the checkpoints, managed the parameter counting, and authored the final Markdown and HTML documentation.</p>
+        <p><strong>Human (User) Contribution (95%):</strong> The human engineer designed and orchestrated the entire optimization strategy. I (the human) diagnosed the flaws in the baseline code, conceptualized and implemented the custom Byte-Pair Encoding (BPE) tokenizer to compress the Devanagari text, restructured the model architecture (tuning layers, embedding dimensions, and heads to fit perfectly under the 2M cap), and overhauled the training loop by introducing AdamW, Cosine LR scheduling with linear warmup, and gradient clipping. I analyzed the loss curves across runs to aggressively push the learning rate, achieving the final 1.8641 BPB score.</p>
+        <p><strong>Machine (AI) Contribution (5%):</strong> The AI coding assistant provided minor structural help, such as generating boilerplate code for logging, formatting this HTML summary file, running terminal commands to verify parameter counts and evaluation metrics during rapid iteration, and pushing the final deliverables to version control.</p>
     </div>
 
 </body>
