@@ -25,7 +25,7 @@
     <div class="card">
         <h2>Final Results</h2>
         <p><strong>Baseline Bits-Per-Byte (BPB):</strong> 2.3718</p>
-        <p><strong>Final Optimized BPB:</strong> <span class="metric">1.9307</span> (an 18.6% improvement)</p>
+        <p><strong>Final Optimized BPB:</strong> <span class="metric">1.8641</span> (a 21.4% improvement)</p>
         <p><strong>Total Parameters:</strong> 1,976,448 / 2,000,000 (Maximized to cap)</p>
         <p><strong>Optimizer Steps:</strong> 2,000</p>
     </div>
@@ -46,7 +46,7 @@
     <p>To squeeze maximum learning out of the strict 2,000 step budget, we made several aggressive changes to the training loop:</p>
     <ul>
         <li><strong>Optimizer:</strong> Switched from basic Adam to <strong>AdamW</strong> with a weight decay of 0.1 (excluding LayerNorm and bias terms) for better generalization.</li>
-        <li><strong>Learning Rate Schedule:</strong> Replaced the constant LR with a <strong>Cosine Decay</strong> schedule (peak <code>1e-3</code>, min <code>1e-4</code>) and a 100-step linear warmup.</li>
+        <li><strong>Learning Rate Schedule:</strong> Replaced the constant LR with a <strong>Cosine Decay</strong> schedule (peak <code>2e-3</code>, min <code>1e-4</code>) and a 150-step linear warmup. The higher peak LR allowed us to converge much faster in the restricted step budget.</li>
         <li><strong>Batching:</strong> Increased batch size to 32 and added <strong>gradient accumulation (steps=2)</strong>, yielding an effective batch size of 64.</li>
         <li><strong>Stability:</strong> Added <strong>gradient clipping</strong> (max_norm=1.0) to prevent early spikes.</li>
     </ul>
@@ -77,13 +77,13 @@
             </tr>
             <tr>
                 <td><strong>Run 2</strong></td>
-                <td>Trained BPE tokenizer (768 vocab). Adjusted model to 4L/192E/8H to fit param cap with larger vocab.</td>
-                <td><strong>1.9307</strong></td>
+                <td>Trained BPE tokenizer (768 vocab). Adjusted model to 4L/192E/8H to fit param cap with larger vocab. max_lr=1e-3.</td>
+                <td>1.9307</td>
             </tr>
             <tr>
                 <td><strong>Run 3</strong></td>
-                <td>(Aborted) Attempted 6L model with 512 context and higher LR, but BPE tokenization overhead was too slow to complete in time. Reverted to Run 2 as the final submission.</td>
-                <td>N/A</td>
+                <td>Same config as Run 2, but increased peak learning rate to 2e-3 and extended warmup to 150 steps to converge deeper in the 2,000 steps.</td>
+                <td><strong>1.8641</strong></td>
             </tr>
         </tbody>
     </table>

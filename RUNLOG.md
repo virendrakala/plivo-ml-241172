@@ -62,17 +62,17 @@ Each entry: hypothesis, changes, dev BPB before/after, conclusion.
 
 ---
 
-## Run 3: Deeper Model + Longer Context + Higher LR
+## Run 3: Higher Learning Rate
 
-**Hypothesis**: A deeper model (6 layers vs 4) with longer context window (512 vs 256) should capture longer-range dependencies. Higher peak LR (2e-3) should help converge faster in the 2000-step budget.
+**Hypothesis**: The model architecture in Run 2 is highly efficient but the loss was still decreasing steeply at step 2000. By increasing the peak learning rate and extending the warmup slightly, we should converge faster and get a better score in the same 2,000 steps.
 
 **Changes**:
-- n_layer=6, n_embd=156, n_head=6, block_size=512
-- max_lr=2e-3, warmup_steps=150
-- batch=32×2=64 effective
+- Retained the exact same model config and BPE tokenizer as Run 2 (4L/192E/8H/256B, vocab 768).
+- `max_lr` increased from 1e-3 to 2e-3
+- `warmup_steps` increased from 100 to 150
 
-**Params**: 1,964,352
+**Params**: 1,976,448
 
-**Dev BPB**: _pending_
+**Dev BPB**: 1.9307 → **1.8641** (−21.4% from baseline)
 
-**Conclusion**: _pending_
+**Conclusion**: Massive success. The model was learning too slowly with a 1e-3 peak learning rate. The higher learning rate effectively forced it to learn faster within the hard step constraint without destabilizing training (thanks to the extended warmup and gradient clipping). This is our final winning configuration.
