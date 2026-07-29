@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM 2,000 Step Speedrun Summary</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 2rem; color: #333; }
+        h1 { border-bottom: 2px solid #eaecef; padding-bottom: 0.3em; color: #24292e; }
+        h2 { color: #24292e; margin-top: 1.5em; }
+        table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+        th, td { border: 1px solid #dfe2e5; padding: 0.6em 1em; text-align: left; }
+        th { background-color: #f6f8fa; }
+        .metric { font-weight: bold; color: #0366d6; }
+        .highlight { background-color: #fffbdd; padding: 0.2rem 0.4rem; border-radius: 3px; }
+        pre { background-color: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+        code { font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 85%; }
+        .card { border: 1px solid #e1e4e8; border-radius: 6px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(27,31,35,0.04); }
+    </style>
+</head>
+<body>
+
+    <h1>LLM 2,000 Step Speedrun Summary</h1>
+    
+    <div class="card">
+        <h2>Final Results</h2>
+        <p><strong>Baseline Bits-Per-Byte (BPB):</strong> 2.3718</p>
+        <p><strong>Final Optimized BPB:</strong> <span class="metric">1.9307</span> (an 18.6% improvement)</p>
+        <p><strong>Total Parameters:</strong> 1,976,448 / 2,000,000 (Maximized to cap)</p>
+        <p><strong>Optimizer Steps:</strong> 2,000</p>
+    </div>
+
+    <h2>Architecture & Configuration</h2>
+    <p>Our final winning model architecture maximizes the 2,000,000 parameter budget while accommodating a larger custom vocabulary:</p>
+    <ul>
+        <li><strong>Layers (n_layer):</strong> 4</li>
+        <li><strong>Embedding Dimension (n_embd):</strong> 192</li>
+        <li><strong>Attention Heads (n_head):</strong> 8</li>
+        <li><strong>Context Window (block_size):</strong> 256 tokens</li>
+        <li><strong>Vocabulary Size:</strong> 768 tokens (256 byte fallback + 512 BPE merges)</li>
+        <li><strong>Weight Tying:</strong> Enabled (<span class="highlight">tie_weights = True</span>), saving ~150k parameters by sharing the embedding and output projection layers.</li>
+        <li><strong>Initialization:</strong> Scaled residual projections (GPT-2 style) with <code>std = 0.02 / sqrt(2 * n_layer)</code> for early training stability.</li>
+    </ul>
+
+    <h2>Training Optimizations</h2>
+    <p>To squeeze maximum learning out of the strict 2,000 step budget, we made several aggressive changes to the training loop:</p>
+    <ul>
+        <li><strong>Optimizer:</strong> Switched from basic Adam to <strong>AdamW</strong> with a weight decay of 0.1 (excluding LayerNorm and bias terms) for better generalization.</li>
+        <li><strong>Learning Rate Schedule:</strong> Replaced the constant LR with a <strong>Cosine Decay</strong> schedule (peak <code>1e-3</code>, min <code>1e-4</code>) and a 100-step linear warmup.</li>
+        <li><strong>Batching:</strong> Increased batch size to 32 and added <strong>gradient accumulation (steps=2)</strong>, yielding an effective batch size of 64.</li>
+        <li><strong>Stability:</strong> Added <strong>gradient clipping</strong> (max_norm=1.0) to prevent early spikes.</li>
+    </ul>
+
+    <h2>The Tokenizer (The Biggest Win)</h2>
+    <p>The provided corpus is heavily mixed with Hindi (Devanagari script). The baseline byte-level tokenizer translates each Devanagari character into 3 separate byte tokens. This devastated the 128-token context window and wasted parameters.</p>
+    <p>We trained a custom <strong>Byte-Pair Encoding (BPE) Tokenizer</strong> with 512 merges directly on the corpus. This compressed the training data from 7.3M bytes to 2.8M tokens (a <strong>2.59x compression ratio</strong>), drastically increasing the effective context window and yielding the largest single improvement to our BPB score. It safely falls back to bytes for out-of-vocab characters, passing all round-trip evaluation tests.</p>
+
+    <h2>Experiment Log (RUNLOG Summary)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Run</th>
+                <th>Hypothesis / Changes</th>
+                <th>Dev BPB</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Run 0</strong></td>
+                <td>Baseline unmodified starter code (byte tok, constant LR).</td>
+                <td>2.3718</td>
+            </tr>
+            <tr>
+                <td><strong>Run 1</strong></td>
+                <td>Weight tying, GPT-2 init, cosine LR + warmup, AdamW, grad clip, effective batch 64, model (5L/176E/8H).</td>
+                <td>2.2099</td>
+            </tr>
+            <tr>
+                <td><strong>Run 2</strong></td>
+                <td>Trained BPE tokenizer (768 vocab). Adjusted model to 4L/192E/8H to fit param cap with larger vocab.</td>
+                <td><strong>1.9307</strong></td>
+            </tr>
+            <tr>
+                <td><strong>Run 3</strong></td>
+                <td>(Aborted) Attempted 6L model with 512 context and higher LR, but BPE tokenization overhead was too slow to complete in time. Reverted to Run 2 as the final submission.</td>
+                <td>N/A</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Agent vs. Human Contribution</h2>
+    <div class="card">
+        <p><strong>Human (User) Contribution:</strong> The user initiated the run, established the strict constraints, identified the impending deadline, and maintained oversight of the process.</p>
+        <p><strong>Machine (Agent) Contribution:</strong> I (the AI assistant) autonomously executed the end-to-end pipeline. I diagnosed the flaws in the baseline code, wrote the implementation plan, developed the custom BPE tokenizer from scratch, overhauled the model architecture and training loop (AdamW, LR schedulers, gradient clipping), executed the training runs, evaluated the checkpoints, managed the parameter counting, and authored the final Markdown and HTML documentation.</p>
+    </div>
+
+</body>
+</html>
